@@ -4,119 +4,52 @@ const db = require('../../db/connection');
 const inputCheck = require('../../utils/inputCheck');
 
 
-router.get ('/voters', (req, res) =>{
 
-    const sql = `SELECT * FROM voters ORDER BY last_name`;
+router.get('/votes',(req, res)=>{
+    const sql = `SELECT candidates.*, parties.name AS party_name, COUNT(candidate_id) AS count
+    FROM votes
+    LEFT JOIN candidates ON votes.candidate_id = candidates.id
+    LEFT JOIN parties ON candidates.party_id = parties.id
+    GROUP BY candidate_id ORDER BY count DESC`;
 
     db.query(sql, (err, rows) => {
-
-        if(err) {
-            res.status(500).json({ error: err.message });
-        return;
-        }
-        res.json({
-            message: 'success',
-            data: rows,
-          });
-    });
-
-});
-
-router.get ('/voter/:id', (req, res) => {
-
-    const sql = `SELECT * FROM voters WHERE id = ?`;
-    const params = [req.params.id];
-
-    db.query(sql, params, (err, row) => {
-
-        if(err){
-
-     res.status(400).json({ error: err.message });
-        return;
-      }
-      res.json({
-        message: 'success',
-        data: row
-      });
-    });
-  });
-
-
-  // Create a voter
-router.post('/voter', ({ body }, res) => {
- // Data validation
-    const errors = inputCheck(body, 'first_name', 'last_name', 'email');
-        if (errors) {
-        res.status(400).json({ error: errors });
-        return;
-        }
-
-    const sql = `INSERT INTO voters (first_name, last_name, email) VALUES (?,?,?)`;
-    const params = [body.first_name, body.last_name, body.email];
-
-    db.query(sql, params, (err, result) => {
         if (err) {
-          res.status(400).json({ error: err.message });
+          res.status(500).json({ error: err.message });
           return;
         }
         res.json({
           message: 'success',
-          data: body
+          data: rows
         });
       });
     });
 
-router.put('/voter/:id', (req, res) => {
-
-        const errors = inputCheck(req.body, 'email');
-    
-        if(errors) {
-            res.status(400).json({error: errors });
-            return;
-        }
-        const sql = `UPDATE voters SET email = ? 
-                     WHERE id = ?`;
-        const params = [req.body.email, req.params.id];
-        db.query(sql, params, (err, result) => {
-          if (err) {
-            res.status(400).json({ error: err.message });
-            // check if a record was found
-          } else if (!result.affectedRows) {
-            res.json({
-              message: 'voter not found'
-            });
-          } else {
-            res.json({
-              message: 'success',
-              data: req.body,
-              changes: result.affectedRows
-            });
-          }
-        });
-      });
 
 
-// Delete a voter
-router.delete('/voter/:id', (req, res) => {
-    const sql = `DELETE FROM voters WHERE id = ?`;
+
+
+router.post('/vote', ({ body }, res) => {
+    // Data validation
+    const errors = inputCheck(body, 'voter_id', 'candidate_id');
+    if (errors) {
+      res.status(400).json({ error: errors });
+      return;
+    }
   
-    db.query(sql, req.params.id, (err, result) => {
+    const sql = `INSERT INTO votes (voter_id, candidate_id) VALUES (?,?)`;
+    const params = [body.voter_id, body.candidate_id];
+  
+    db.query(sql, params, (err, result) => {
       if (err) {
-        res.statusMessage(400).json({ error: res.message });
-      } else if (!result.affectedRows) {
-        res.json({
-          message: 'voter not found'
-        });
-      } else {
-        res.json({
-          message: 'deleted',
-          changes: result.affectedRows,
-          id: req.params.id
-        });
+        res.status(400).json({ error: err.message });
+        return;
       }
+      res.json({
+        message: 'success',
+        data: body,
+        changes: result.affectedRows
+      });
     });
   });
 
-
-
-module.exports = router;
+  module.exports = router;
